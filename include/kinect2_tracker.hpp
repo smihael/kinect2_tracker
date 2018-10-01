@@ -212,8 +212,7 @@ public:
           break;
       }
     }
-  }
-
+  }  
   /**
    * Publish the joints over the TF stream
    * @param j_name: joint name
@@ -226,19 +225,49 @@ public:
     if (j.getPositionConfidence() > 0.0)
     {
       tf::Vector3 currentVec3 = tf::Vector3(j.getPosition().x / 1000.0, j.getPosition().y / 1000.0, j.getPosition().z / 1000.0);
+
       tf::Transform transform;
+
+      const nite::Quaternion joint_orientation = j.getOrientation();
+
+      tf::Quaternion jQ, rQ_conj, dQ;
+
+      jQ = tf::Quaternion(joint_orientation.x, joint_orientation.y,joint_orientation.z, joint_orientation.w);
+
         if (j_name != "torso")
         {
             tf::Vector3 rVec3 = tf::Vector3(r.getPosition().x / 1000.0, r.getPosition().y / 1000.0, r.getPosition().z / 1000.0);
             transform.setOrigin(currentVec3 - rVec3);
-            transform.setRotation(tf::Quaternion(0,0,0,1));
+
+            rQ_conj = tf::Quaternion(-r.getOrientation().x, -r.getOrientation().y,-r.getOrientation().z,
+                                               r.getOrientation().w);
+            dQ = (jQ*rQ_conj).normalize();
+            //transform.setRotation(tf::Quaternion(0,0,0,1));
+
+            transform.setRotation(dQ);
         }
         else
         {
             transform.setOrigin(currentVec3);
-            transform.setRotation(tf::Quaternion(0,0,0,1));
+            //transform.setRotation(tf::Quaternion(0,0,0,1));
+            transform.setRotation(jQ);
         }
-      
+
+        if (isnan(transform.getRotation().x()) || isnan(transform.getRotation().y()) ||
+                  isnan(transform.getRotation().z()) || isnan(transform.getRotation().w()))
+        {
+          ROS_WARN_STREAM("Got nan as orientation for " << j_name << " in relation to " << r_name << ". Publishing it with identity frame.");
+          transform.setRotation(tf::Quaternion::getIdentity());
+        }
+
+        if (j_name == "right_elbow") {
+            std::printf("%f, %f, %f, %f: %f / %f  \n",
+                        jQ.x(),jQ.y(), jQ.z(), jQ.w(),
+                        jQ.getAngle()*180/M_PI,
+                        dQ.getAngle()*180/M_PI
+                        );
+        }
+
         std::stringstream j_frame_id_stream; //stringstream of frame id values
         std::string j_frame_id; // string of the stringstream
         j_frame_id_stream << "/" << tf_prefix_ << "/user_" << uid << "/" << j_name;

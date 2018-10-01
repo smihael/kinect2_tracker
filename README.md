@@ -1,5 +1,7 @@
 # kinect2_tracker
-A working ROS wrapper for the KinectOne (v2) using libfreenect2
+
+A fork of https://github.com/mcgi5sr2/kinect2_tracker (ROS wrapper for Kinect One using libfreenect2) with experimental support for joint orientations.
+
 
 ## install 
 
